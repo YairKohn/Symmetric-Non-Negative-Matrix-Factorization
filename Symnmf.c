@@ -8,7 +8,7 @@
   goals:
     - sym  : compute similarity matrix W
     - ddg  : compute diagonal degree matrix D of W
-    - norm : compute normalized similarity matrix D^{-1/2} W D^{-1/2}
+    - norm : compute normalized similarity matrix D^{-1/2} A D^{-1/2}
 
   Input file: N lines, each line is a data point of dimension d, comma-separated
   Output: requested matrix, comma-separated values, 4 decimal places, each row on its own line
@@ -18,7 +18,7 @@
 
 static void print_error_and_exit(void) {
     const char *msg = "An Error Has Occurred";
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stdout, "%s\n", msg);
     exit(1);
 }
 
@@ -171,6 +171,18 @@ static double squared_euclidean(const double *a, const double *b, int d) {
     return sum;
 }
 
+/* Helper to compute degree vector: degrees[i] = sum_j W[i][j] */
+static void compute_degrees(double **W, int n, double *degrees) {
+    int i, j;
+    for (i = 0; i < n; i++) {
+        double sum = 0.0;
+        for (j = 0; j < n; j++) {
+            sum += W[i][j];
+        }
+        degrees[i] = sum;
+    }
+}
+
 /* ================= Core required functions ================= */
 
 /* Compute similarity matrix W: w_ij = exp(-||xi-xj||^2 / 2), w_ii = 0 */
@@ -196,44 +208,49 @@ double **sym(double **points, int n, int d) {
 /* Compute diagonal degree matrix D from W: D_ii = sum_j W_ij */
 double **ddg(double **W, int n) {
     double **D;
-    int i, j;
-    double sum;
+    double *degrees;
+    int i;
 
     D = allocate_matrix(n, n);
-
-    for (i = 0; i < n; i++) {
-        sum = 0.0;
-        for (j = 0; j < n; j++) {
-            sum += W[i][j];
-        }
-        D[i][i] = sum;
-    }
-
-    return D;
-}
-
-/* Compute normalized similarity matrix: D^{-1/2} W D^{-1/2} */
-double **norm(double **W, int n) {
-    double **N;
-    double *inv_sqrt_d;
-    int i, j;
-
-    inv_sqrt_d = (double *)malloc((size_t)n * sizeof(double));
-    if (inv_sqrt_d == NULL) {
+    degrees = (double *)malloc((size_t)n * sizeof(double));
+    if (degrees == NULL) {
         print_error_and_exit();
     }
 
-    /* compute D and its inverse square root on the fly */
+    compute_degrees(W, n, degrees);
+
     for (i = 0; i < n; i++) {
-        double row_sum;
-        row_sum = 0.0;
-        for (j = 0; j < n; j++) {
-            row_sum += W[i][j];
-        }
-        if (row_sum <= 0.0) {
+        D[i][i] = degrees[i];
+    }
+
+    free(degrees);
+    return D;
+}
+
+/* Compute normalized similarity matrix: D^{-1/2} A D^{-1/2} */
+double **norm(double **W, int n) {
+    double **N;
+    double *degrees;
+    double *inv_sqrt_d;
+    int i, j;
+
+    degrees = (double *)malloc((size_t)n * sizeof(double));
+    if (degrees == NULL) {
+        print_error_and_exit();
+    }
+    compute_degrees(W, n, degrees);
+
+    inv_sqrt_d = (double *)malloc((size_t)n * sizeof(double));
+    if (inv_sqrt_d == NULL) {
+        free(degrees);
+        print_error_and_exit();
+    }
+
+    for (i = 0; i < n; i++) {
+        if (degrees[i] <= 0.0) {
             inv_sqrt_d[i] = 0.0; /* isolated node */
         } else {
-            inv_sqrt_d[i] = 1.0 / sqrt(row_sum);
+            inv_sqrt_d[i] = 1.0 / sqrt(degrees[i]);
         }
     }
 
@@ -246,6 +263,7 @@ double **norm(double **W, int n) {
     }
 
     free(inv_sqrt_d);
+    free(degrees);
     return N;
 }
 
