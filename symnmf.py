@@ -24,12 +24,8 @@ def print_matrix(mat):
 
 def init_H_from_W(W, n, k):
     np.random.seed(1234)
-    m = 0.0
-    count = n * n
-    for i in range(n):
-        for j in range(n):
-            m += W[i][j]
-    m /= count
+    W_arr = np.array(W, dtype=float)
+    m = float(np.mean(W_arr))
     upper = 2.0 * sqrt(m / float(k)) if k > 0 else 0.0
     H = np.random.uniform(0.0, upper, size=(n, k))
     return H.tolist()
