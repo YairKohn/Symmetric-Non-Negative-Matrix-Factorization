@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "symnmf.h"
 
 /*
   CLI: ./symnmf <goal> <input_file>
@@ -171,6 +172,52 @@ static double squared_euclidean(const double *a, const double *b, int d) {
     return sum;
 }
 
+/* Multiply A(n x m) by B(m x p) -> returns new matrix C(n x p) */
+static double **matrix_multiply(double **A, int n, int m, double **B, int p) {
+    int i, j, t;
+    double **C = allocate_matrix(n, p);
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < p; j++) {
+            double sum = 0.0;
+            for (t = 0; t < m; t++) {
+                sum += A[i][t] * B[t][j];
+            }
+            C[i][j] = sum;
+        }
+    }
+    return C;
+}
+
+/* Compute R = A (m x n)^T, i.e., transpose of A times A: (k x k) for A(n x k) */
+static double **matrix_transpose_multiply(double **A, int n, int k) {
+    /* returns S = A^T * A (k x k) */
+    int i, j, t;
+    double **S = allocate_matrix(k, k);
+    for (i = 0; i < k; i++) {
+        for (j = 0; j < k; j++) {
+            double sum = 0.0;
+            for (t = 0; t < n; t++) {
+                sum += A[t][i] * A[t][j];
+            }
+            S[i][j] = sum;
+        }
+    }
+    return S;
+}
+
+/* Compute Frobenius norm squared of A-B, both n x k */
+static double frobenius_norm_sq_diff(double **A, double **B, int n, int k) {
+    int i, j;
+    double sum = 0.0;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < k; j++) {
+            double d = A[i][j] - B[i][j];
+            sum += d * d;
+        }
+    }
+    return sum;
+}
+
 /* Helper to compute degree vector: degrees[i] = sum_j W[i][j] */
 static void compute_degrees(double **W, int n, double *degrees) {
     int i, j;
@@ -265,6 +312,74 @@ double **norm(double **W, int n) {
     free(inv_sqrt_d);
     free(degrees);
     return N;
+}
+
+/* ================= SymNMF iterative optimization ================= */
+
+double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double epsilon) {
+    const double beta = 0.5;
+    int iter, i, j;
+    double **H_curr;
+    double **H_next;
+    double **num;   /* W * H */
+    double **HtH;   /* H^T * H (k x k) */
+    double **den;   /* H * (H^T H) */
+
+    /* Copy initial H */
+    H_curr = allocate_matrix(n, k);
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < k; j++) {
+            H_curr[i][j] = H_init[i][j];
+        }
+    }
+    H_next = allocate_matrix(n, k);
+
+    for (iter = 0; iter < max_iter; iter++) {
+        num = matrix_multiply(W, n, n, H_curr, k);           /* n x k */
+        HtH = matrix_transpose_multiply(H_curr, n, k);       /* k x k */
+        den = matrix_multiply(H_curr, n, k, HtH, k);         /* n x k */
+
+        for (i = 0; i < n; i++) {
+            for (j = 0; j < k; j++) {
+                double ratio;
+                double denom = den[i][j];
+                if (denom > 1e-15) {
+                    ratio = num[i][j] / denom;
+                } else {
+                    ratio = 0.0;
+                }
+                H_next[i][j] = H_curr[i][j] * (1.0 - beta + beta * ratio);
+                if (H_next[i][j] < 0.0) {
+                    H_next[i][j] = 0.0; /* enforce non-negativity */
+                }
+            }
+        }
+
+        /* check convergence */
+        if (frobenius_norm_sq_diff(H_next, H_curr, n, k) < epsilon) {
+            free_matrix(num, n);
+            free_matrix(HtH, k);
+            free_matrix(den, n);
+            break;
+        }
+
+        /* swap H_curr and H_next */
+        {
+            double **tmp = H_curr;
+            H_curr = H_next;
+            H_next = tmp;
+        }
+
+        free_matrix(num, n);
+        free_matrix(HtH, k);
+        free_matrix(den, n);
+    }
+
+    /* Ensure result is in H_curr; if we broke early with H_next newer, copy */
+    if (H_next != H_curr) {
+        free_matrix(H_next, n);
+    }
+    return H_curr;
 }
 
 /* ========================= main ========================= */
