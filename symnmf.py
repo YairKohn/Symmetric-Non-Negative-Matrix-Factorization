@@ -31,48 +31,45 @@ def init_H_from_W(W, n, k):
     return H.tolist()
 
 
-def main():
-    if len(sys.argv) != 4:
-        print("Invalid Input!")
-        return
-
-    # CLI: k goal file_name
+def parse_args(argv):
+    if len(argv) != 4:
+        return None
     try:
-        k = int(sys.argv[1])
+        k = int(argv[1])
     except Exception:
-        print("Invalid Input!")
-        return
+        return None
+    return k, argv[2], argv[3]
 
-    goal = sys.argv[2]
-    file_name = sys.argv[3]
 
+def dispatch_goal(k, goal, file_name):
     X = read_points(file_name)
     n = len(X)
-
     if goal == 'sym':
-        A = symnmf.sym(X)
-        print_matrix(A)
-        return
-
+        print_matrix(symnmf.sym(X))
+        return True
     if goal == 'ddg':
-        D = symnmf.ddg(X)
-        print_matrix(D)
-        return
-
+        print_matrix(symnmf.ddg(X))
+        return True
     if goal == 'norm':
-        W = symnmf.norm(X)
-        print_matrix(W)
-        return
-
+        print_matrix(symnmf.norm(X))
+        return True
     if goal == 'symnmf':
-        # Build normalized similarity W, then initialize H and run
         W = symnmf.norm(X)
         H0 = init_H_from_W(W, n, k)
         H_final = symnmf.symnmf(W, H0, MAX_ITER, EPSILON)
         print_matrix(H_final)
-        return
+        return True
+    return False
 
-    print("Invalid Input!")
+
+def main():
+    parsed = parse_args(sys.argv)
+    if not parsed:
+        print("Invalid Input!")
+        return
+    k, goal, file_name = parsed
+    if not dispatch_goal(k, goal, file_name):
+        print("Invalid Input!")
 
 
 if __name__ == '__main__':

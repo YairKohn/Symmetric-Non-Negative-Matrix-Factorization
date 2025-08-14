@@ -61,6 +61,34 @@ static void rewind_file(FILE *fp) {
     }
 }
 
+/* Parse a CSV line into a row of length d */
+static void parse_line_to_row(char *line, double *row, int d) {
+    int j = 0;
+    char *token = strtok(line, ",\n");
+    while (token != NULL) {
+        if (j >= d) {
+            print_invalid_input_and_exit();
+        }
+        row[j] = strtod(token, NULL);
+        token = strtok(NULL, ",\n");
+        j++;
+    }
+    if (j != d) {
+        print_invalid_input_and_exit();
+    }
+}
+
+static void load_points(FILE *fp, double **points, int n, int d) {
+    int i;
+    char line[LINE_BUFFER_SIZE];
+    for (i = 0; i < n; i++) {
+        if (fgets(line, LINE_BUFFER_SIZE, fp) == NULL) {
+            print_invalid_input_and_exit();
+        }
+        parse_line_to_row(line, points[i], d);
+    }
+}
+
 static void count_rows_cols(FILE *fp, int *out_rows, int *out_cols) {
     char line[LINE_BUFFER_SIZE];
     int rows;
@@ -104,41 +132,16 @@ static double **read_points_from_file(const char *file_path, int *out_n, int *ou
     int n;
     int d;
     double **points;
-    char line[LINE_BUFFER_SIZE];
-    int i, j;
-    char *token;
 
     fp = fopen(file_path, "r");
     if (fp == NULL) {
         print_invalid_input_and_exit();
     }
-
     count_rows_cols(fp, &n, &d);
     rewind_file(fp);
 
     points = allocate_matrix(n, d);
-
-    i = 0;
-    while (i < n && fgets(line, LINE_BUFFER_SIZE, fp) != NULL) {
-        token = strtok(line, ",\n");
-        j = 0;
-        while (token != NULL) {
-            if (j >= d) {
-                print_invalid_input_and_exit();
-            }
-            points[i][j] = strtod(token, NULL);
-            token = strtok(NULL, ",\n");
-            j++;
-        }
-        if (j != d) {
-            print_invalid_input_and_exit();
-        }
-        i++;
-    }
-
-    if (i != n) {
-        print_invalid_input_and_exit();
-    }
+    load_points(fp, points, n, d);
 
     fclose(fp);
 
@@ -316,66 +319,52 @@ double **norm(double **W, int n) {
 
 /* ================= SymNMF iterative optimization ================= */
 
-double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double epsilon) {
-    const double beta = 0.5;
-    int iter, i, j;
-    double **H_curr;
-    double **H_next;
-    double **num;   /* W * H */
-    double **HtH;   /* H^T * H (k x k) */
-    double **den;   /* H * (H^T H) */
-
-    /* Copy initial H */
-    H_curr = allocate_matrix(n, k);
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < k; j++) {
-            H_curr[i][j] = H_init[i][j];
+static void copy_matrix_rect(double **src, double **dst, int rows, int cols) {
+    int i, j;
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < cols; j++) {
+            dst[i][j] = src[i][j];
         }
     }
-    H_next = allocate_matrix(n, k);
+}
+
+static void multiplicative_update_step(double **W, double **H_curr, double **H_next, int n, int k) {
+    const double beta = 0.5;
+    double **num = matrix_multiply(W, n, n, H_curr, k);
+    double **HtH = matrix_transpose_multiply(H_curr, n, k);
+    double **den = matrix_multiply(H_curr, n, k, HtH, k);
+    int i, j;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < k; j++) {
+            double denom = den[i][j];
+            double ratio = (denom > 1e-15) ? (num[i][j] / denom) : 0.0;
+            double val = H_curr[i][j] * (1.0 - beta + beta * ratio);
+            H_next[i][j] = (val > 0.0) ? val : 0.0;
+        }
+    }
+    free_matrix(num, n);
+    free_matrix(HtH, k);
+    free_matrix(den, n);
+}
+
+double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double epsilon) {
+    int iter;
+    double **H_curr = allocate_matrix(n, k);
+    double **H_next = allocate_matrix(n, k);
+    copy_matrix_rect(H_init, H_curr, n, k);
 
     for (iter = 0; iter < max_iter; iter++) {
-        num = matrix_multiply(W, n, n, H_curr, k);           /* n x k */
-        HtH = matrix_transpose_multiply(H_curr, n, k);       /* k x k */
-        den = matrix_multiply(H_curr, n, k, HtH, k);         /* n x k */
-
-        for (i = 0; i < n; i++) {
-            for (j = 0; j < k; j++) {
-                double ratio;
-                double denom = den[i][j];
-                if (denom > 1e-15) {
-                    ratio = num[i][j] / denom;
-                } else {
-                    ratio = 0.0;
-                }
-                H_next[i][j] = H_curr[i][j] * (1.0 - beta + beta * ratio);
-                if (H_next[i][j] < 0.0) {
-                    H_next[i][j] = 0.0; /* enforce non-negativity */
-                }
-            }
-        }
-
-        /* check convergence */
+        multiplicative_update_step(W, H_curr, H_next, n, k);
         if (frobenius_norm_sq_diff(H_next, H_curr, n, k) < epsilon) {
-            free_matrix(num, n);
-            free_matrix(HtH, k);
-            free_matrix(den, n);
             break;
         }
-
-        /* swap H_curr and H_next */
         {
             double **tmp = H_curr;
             H_curr = H_next;
             H_next = tmp;
         }
-
-        free_matrix(num, n);
-        free_matrix(HtH, k);
-        free_matrix(den, n);
     }
 
-    /* Ensure result is in H_curr; if we broke early with H_next newer, copy */
     if (H_next != H_curr) {
         free_matrix(H_next, n);
     }
@@ -384,44 +373,51 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
 
 /* ========================= main ========================= */
 
+static void run_goal_sym(double **points, int n, int d) {
+    double **M = sym(points, n, d);
+    print_matrix(M, n, n);
+    free_matrix(M, n);
+}
+
+static void run_goal_ddg(double **points, int n, int d) {
+    double **W = sym(points, n, d);
+    double **M = ddg(W, n);
+    print_matrix(M, n, n);
+    free_matrix(M, n);
+    free_matrix(W, n);
+}
+
+static void run_goal_norm(double **points, int n, int d) {
+    double **W = sym(points, n, d);
+    double **M = norm(W, n);
+    print_matrix(M, n, n);
+    free_matrix(M, n);
+    free_matrix(W, n);
+}
+
 int main(int argc, char **argv) {
     const char *goal;
     const char *file_path;
-    double **points;
-    double **W;
-    double **M;
     int n, d;
+    double **points;
 
     if (argc != 3) {
         print_invalid_input_and_exit();
     }
-
     goal = argv[1];
     file_path = argv[2];
 
     points = read_points_from_file(file_path, &n, &d);
-
     if (strcmp(goal, "sym") == 0) {
-        M = sym(points, n, d);
-        print_matrix(M, n, n);
-        free_matrix(M, n);
+        run_goal_sym(points, n, d);
     } else if (strcmp(goal, "ddg") == 0) {
-        W = sym(points, n, d);
-        M = ddg(W, n);
-        print_matrix(M, n, n);
-        free_matrix(M, n);
-        free_matrix(W, n);
+        run_goal_ddg(points, n, d);
     } else if (strcmp(goal, "norm") == 0) {
-        W = sym(points, n, d);
-        M = norm(W, n);
-        print_matrix(M, n, n);
-        free_matrix(M, n);
-        free_matrix(W, n);
+        run_goal_norm(points, n, d);
     } else {
         free_matrix(points, n);
         print_invalid_input_and_exit();
     }
-
     free_matrix(points, n);
     return 0;
-} 
+}

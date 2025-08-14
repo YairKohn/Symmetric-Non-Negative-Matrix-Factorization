@@ -2,7 +2,6 @@ import sys
 from math import sqrt
 import numpy as np
 from sklearn.metrics import silhouette_score
-
 import symnmf
 from kmeans import kmeans
 

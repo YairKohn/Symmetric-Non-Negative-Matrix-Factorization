@@ -26,7 +26,7 @@ def mean(points):
     return [sum(point[i] for point in points) / n for i in range(d)]
 
 def kmeans(data, K, max_iter=400 ):
-    epsilon=0.001
+    epsilon=1e-4
     centroids = [data[i][:] for i in range(K)] # Initialize centroids with the first K points, doing shallow copies.
     for _ in range(max_iter):
         clusters = [[] for _ in range(K)]

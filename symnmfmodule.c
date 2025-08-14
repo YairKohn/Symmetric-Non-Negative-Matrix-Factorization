@@ -3,58 +3,71 @@
 #include <stdlib.h>
 #include "symnmf.h"
 
-/* Utility: convert Python list of lists to C matrix (double **). Expects rectangular matrix. */
-static double **pylist_to_cmatrix(PyObject *list2d, int *out_rows, int *out_cols) {
-    if (!PyList_Check(list2d)) {
-        PyErr_SetString(PyExc_TypeError, "Invalid Input!");
-        return NULL;
-    }
+/* Helpers for converting Python list-of-lists to C double ** */
+static int get_pylist_shape(PyObject *list2d, int *out_rows, int *out_cols) {
+    if (!PyList_Check(list2d)) { PyErr_SetString(PyExc_TypeError, "Invalid Input!"); return 0; }
     Py_ssize_t n = PyList_Size(list2d);
-    if (n <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Invalid Input!");
-        return NULL;
-    }
+    if (n <= 0) { PyErr_SetString(PyExc_ValueError, "Invalid Input!"); return 0; }
     PyObject *row0 = PyList_GetItem(list2d, 0);
-    if (!PyList_Check(row0)) {
-        PyErr_SetString(PyExc_TypeError, "Invalid Input!");
-        return NULL;
-    }
+    if (!PyList_Check(row0)) { PyErr_SetString(PyExc_TypeError, "Invalid Input!"); return 0; }
     Py_ssize_t d = PyList_Size(row0);
-    if (d <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Invalid Input!");
-        return NULL;
-    }
-
-    double **mat = (double **)malloc((size_t)n * sizeof(double *));
-    if (!mat) { PyErr_NoMemory(); return NULL; }
+    if (d <= 0) { PyErr_SetString(PyExc_ValueError, "Invalid Input!"); return 0; }
+    /* verify rectangular */
     for (Py_ssize_t i = 0; i < n; i++) {
         PyObject *row = PyList_GetItem(list2d, i);
         if (!PyList_Check(row) || PyList_Size(row) != d) {
             PyErr_SetString(PyExc_TypeError, "Invalid Input!");
-            for (Py_ssize_t t = 0; t < i; t++) free(mat[t]);
-            free(mat);
-            return NULL;
-        }
-        mat[i] = (double *)malloc((size_t)d * sizeof(double));
-        if (!mat[i]) {
-            for (Py_ssize_t t = 0; t < i; t++) free(mat[t]);
-            free(mat);
-            PyErr_NoMemory();
-            return NULL;
-        }
-        for (Py_ssize_t j = 0; j < d; j++) {
-            PyObject *val = PyList_GetItem(row, j);
-            double v = PyFloat_AsDouble(val);
-            if (PyErr_Occurred()) {
-                for (Py_ssize_t t = 0; t <= i; t++) free(mat[t]);
-                free(mat);
-                return NULL;
-            }
-            mat[i][j] = v;
+            return 0;
         }
     }
     *out_rows = (int)n;
     *out_cols = (int)d;
+    return 1;
+}
+
+static double **allocate_cmatrix_rows(int rows, int cols) {
+    double **mat = (double **)malloc((size_t)rows * sizeof(double *));
+    if (!mat) { PyErr_NoMemory(); return NULL; }
+    for (int i = 0; i < rows; i++) {
+        mat[i] = (double *)malloc((size_t)cols * sizeof(double));
+        if (!mat[i]) {
+            for (int t = 0; t < i; t++) free(mat[t]);
+            free(mat);
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+    return mat;
+}
+
+static int fill_cmatrix_from_pylist(PyObject *list2d, double **mat, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        PyObject *row = PyList_GetItem(list2d, (Py_ssize_t)i);
+        for (int j = 0; j < cols; j++) {
+            PyObject *val = PyList_GetItem(row, (Py_ssize_t)j);
+            double v = PyFloat_AsDouble(val);
+            if (PyErr_Occurred()) {
+                return 0;
+            }
+            mat[i][j] = v;
+        }
+    }
+    return 1;
+}
+
+/* Utility: convert Python list of lists to C matrix (double **). Expects rectangular matrix. */
+static double **pylist_to_cmatrix(PyObject *list2d, int *out_rows, int *out_cols) {
+    int rows, cols;
+    if (!get_pylist_shape(list2d, &rows, &cols)) return NULL;
+    double **mat = allocate_cmatrix_rows(rows, cols);
+    if (!mat) return NULL;
+    if (!fill_cmatrix_from_pylist(list2d, mat, rows, cols)) {
+        for (int t = 0; t < rows; t++) free(mat[t]);
+        free(mat);
+        return NULL;
+    }
+    *out_rows = rows;
+    *out_cols = cols;
     return mat;
 }
 
