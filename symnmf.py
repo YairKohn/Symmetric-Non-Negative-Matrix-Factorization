@@ -10,11 +10,14 @@ MAX_ITER = 300
 
 
 def read_points(path):
-    arr = np.loadtxt(path, delimiter=',')
-    # Ensure 2D shape even for single row
-    if arr.ndim == 1:
-        arr = arr.reshape(1, -1)
-    return arr.tolist()
+    try:
+        arr = np.loadtxt(path, delimiter=',')
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        return arr.tolist()
+    except Exception:
+        print("An Error Has Occurred")
+        return []
 
 
 def print_matrix(mat):

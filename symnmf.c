@@ -191,22 +191,23 @@ static double **matrix_multiply(double **A, int n, int m, double **B, int p) {
     return C;
 }
 
-/* Compute R = A (m x n)^T, i.e., transpose of A times A: (k x k) for A(n x k) */
+
+/* Compute R = A * A^T for A(n x k) → returns n x n */
 static double **matrix_transpose_multiply(double **A, int n, int k) {
-    /* returns S = A^T * A (k x k) */
     int i, j, t;
-    double **S = allocate_matrix(k, k);
-    for (i = 0; i < k; i++) {
-        for (j = 0; j < k; j++) {
+    double **S = allocate_matrix(n, n);  /* n x n */
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
             double sum = 0.0;
-            for (t = 0; t < n; t++) {
-                sum += A[t][i] * A[t][j];
+            for (t = 0; t < k; t++) {
+                sum += A[i][t] * A[j][t];
             }
             S[i][j] = sum;
         }
     }
     return S;
 }
+
 
 /* Compute Frobenius norm squared of A-B, both n x k */
 static double frobenius_norm_sq_diff(double **A, double **B, int n, int k) {
@@ -327,23 +328,29 @@ static void copy_matrix_rect(double **src, double **dst, int rows, int cols) {
         }
     }
 }
-
 static void multiplicative_update_step(double **W, double **H_curr, double **H_next, int n, int k) {
     const double beta = 0.5;
-    double **num = matrix_multiply(W, n, n, H_curr, k);
-    double **HtH = matrix_transpose_multiply(H_curr, n, k);
-    double **den = matrix_multiply(H_curr, n, k, HtH, k);
+    double **num = matrix_multiply(W, n, n, H_curr, k);      
+    double **HHt = matrix_transpose_multiply(H_curr, n, k);  
+    double **den = matrix_multiply(HHt, n, n, H_curr, k);     
+
     int i, j;
     for (i = 0; i < n; i++) {
         for (j = 0; j < k; j++) {
+            double ratio;
+            double val;
             double denom = den[i][j];
-            double ratio = (denom > 1e-15) ? (num[i][j] / denom) : 0.0;
-            double val = H_curr[i][j] * (1.0 - beta + beta * ratio);
+            if (denom == 0)
+            {
+                print_error_and_exit();
+            }
+            ratio =  (num[i][j] / denom) ;
+            val = H_curr[i][j] * (1.0 - beta + beta * ratio);
             H_next[i][j] = (val > 0.0) ? val : 0.0;
         }
     }
     free_matrix(num, n);
-    free_matrix(HtH, k);
+    free_matrix(HHt, n);
     free_matrix(den, n);
 }
 

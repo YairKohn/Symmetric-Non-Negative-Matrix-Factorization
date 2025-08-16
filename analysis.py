@@ -12,7 +12,7 @@ MAX_ITER = 300
 def read_points(path):
     arr = np.loadtxt(path, delimiter=',')
     if arr.ndim == 1:
-        arr = arr.reshape(1, -1)
+        arr = arr.reshape(-1, 1)
     return arr
 
 
@@ -67,6 +67,8 @@ def main():
 
     nmf_labels = run_symnmf(points, k)
     kmeans_labels = run_kmeans(points, k)
+
+
 
     nmf_score = silhouette_score(points, nmf_labels)
     kmeans_score = silhouette_score(points, kmeans_labels)
