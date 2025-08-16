@@ -7,7 +7,7 @@ from kmeans import kmeans
 
 EPSILON = 1e-4
 MAX_ITER = 300
-
+np.random.seed(1234)
 
 def read_points(path):
     arr = np.loadtxt(path, delimiter=',')
@@ -16,14 +16,11 @@ def read_points(path):
     return arr
 
 
+
 def init_H_from_W(W, n, k):
-    # W is list of lists from C module; compute mean and init H
-    np.random.seed(1234)
-    W_arr = np.array(W, dtype=float)
-    m = float(np.mean(W_arr))
-    upper = 2.0 * sqrt(m / float(k)) if k > 0 else 0.0
-    H = np.random.uniform(0.0, upper, size=(n, k))
-    return H.tolist()
+    m = np.mean(np.array(W))
+    H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
+    return H
 
 
 def labels_from_centroids(points, centroids):

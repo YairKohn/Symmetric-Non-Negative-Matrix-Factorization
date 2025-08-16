@@ -17,17 +17,15 @@
 
 #define LINE_BUFFER_SIZE 16384
 
+
+
 static void print_error_and_exit(void) {
     const char *msg = "An Error Has Occurred";
     fprintf(stdout, "%s\n", msg);
     exit(1);
 }
 
-static void print_invalid_input_and_exit(void) {
-    const char *msg = "Invalid Input!";
-    fprintf(stdout, "%s\n", msg);
-    exit(1);
-}
+
 
 static double **allocate_matrix(int num_rows, int num_cols) {
     double **matrix;
@@ -67,14 +65,14 @@ static void parse_line_to_row(char *line, double *row, int d) {
     char *token = strtok(line, ",\n");
     while (token != NULL) {
         if (j >= d) {
-            print_invalid_input_and_exit();
+            print_error_and_exit();
         }
         row[j] = strtod(token, NULL);
         token = strtok(NULL, ",\n");
         j++;
     }
     if (j != d) {
-        print_invalid_input_and_exit();
+        print_error_and_exit();
     }
 }
 
@@ -83,7 +81,7 @@ static void load_points(FILE *fp, double **points, int n, int d) {
     char line[LINE_BUFFER_SIZE];
     for (i = 0; i < n; i++) {
         if (fgets(line, LINE_BUFFER_SIZE, fp) == NULL) {
-            print_invalid_input_and_exit();
+            print_error_and_exit();
         }
         parse_line_to_row(line, points[i], d);
     }
@@ -114,13 +112,13 @@ static void count_rows_cols(FILE *fp, int *out_rows, int *out_cols) {
         if (first_line_cols == -1) {
             first_line_cols = cols;
         } else if (cols != first_line_cols) {
-            print_invalid_input_and_exit();
+            print_error_and_exit();
         }
         rows++;
     }
 
     if (rows <= 0 || first_line_cols <= 0) {
-        print_invalid_input_and_exit();
+        print_error_and_exit();
     }
 
     *out_rows = rows;
@@ -135,7 +133,7 @@ static double **read_points_from_file(const char *file_path, int *out_n, int *ou
 
     fp = fopen(file_path, "r");
     if (fp == NULL) {
-        print_invalid_input_and_exit();
+        print_error_and_exit();
     }
     count_rows_cols(fp, &n, &d);
     rewind_file(fp);
@@ -363,6 +361,7 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
     for (iter = 0; iter < max_iter; iter++) {
         multiplicative_update_step(W, H_curr, H_next, n, k);
         if (frobenius_norm_sq_diff(H_next, H_curr, n, k) < epsilon) {
+            H_curr = H_next;
             break;
         }
         {
@@ -409,7 +408,7 @@ int main(int argc, char **argv) {
     double **points;
 
     if (argc != 3) {
-        print_invalid_input_and_exit();
+        print_error_and_exit();
     }
     goal = argv[1];
     file_path = argv[2];
@@ -423,7 +422,7 @@ int main(int argc, char **argv) {
         run_goal_norm(points, n, d);
     } else {
         free_matrix(points, n);
-        print_invalid_input_and_exit();
+        print_error_and_exit();
     }
     free_matrix(points, n);
     return 0;

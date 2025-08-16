@@ -18,6 +18,8 @@ const char *ERR_MSG = "An Error Has Occurred\n";
  * Allocated new 2D array on 'arr' address.
  * Returns 0 on success.
  * */
+
+
 int allocate_2D_array(double ***arr, int rows, int cols)
 {
     int i;
@@ -495,7 +497,6 @@ int C_symnmf(double ***H_out, double ***H_in, const int rows_H, const int cols_H
 
     while (i < MAX_ITER && F_norm_s_val >= EPS)
     {
-
         if (update_H(H_out, H_in, rows_H, cols_H, W, N_W) != 0)
         {
             /* Division by zero */
@@ -507,6 +508,7 @@ int C_symnmf(double ***H_out, double ***H_in, const int rows_H, const int cols_H
         matrix_sub(&SUB, H_out, H_in, rows_H, cols_H);
         F_norm_s_val = F_norm_squared(&SUB, rows_H, cols_H);
         copy_matrix(H_in, H_out, rows_H, cols_H);
+        
 
         i++;
     }

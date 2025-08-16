@@ -50,10 +50,6 @@ def symnmf(X, k, N):
     W = norm(X)
     m = np.mean(np.array(W))
     initial_h = np.random.uniform(0, 2*np.sqrt(m/k), (N, k)).tolist()
-    # for i in range(N):
-    #     initial_h.append([])
-    #     for j in range(k):
-    #         initial_h[i].append(2 * np.sqrt(m / k) * np.random.uniform())
     return s.symnmf(initial_h, W)
 
 

@@ -7,7 +7,7 @@ import symnmf
 
 EPSILON = 1e-4
 MAX_ITER = 300
-
+np.random.seed(1234)
 
 def read_points(path):
     try:
@@ -26,12 +26,9 @@ def print_matrix(mat):
 
 
 def init_H_from_W(W, n, k):
-    np.random.seed(1234)
-    W_arr = np.array(W, dtype=float)
-    m = float(np.mean(W_arr))
-    upper = 2.0 * sqrt(m / float(k)) if k > 0 else 0.0
-    H = np.random.uniform(0.0, upper, size=(n, k))
-    return H.tolist()
+    m = np.mean(np.array(W))
+    H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
+    return H
 
 
 def parse_args(argv):
@@ -68,11 +65,11 @@ def dispatch_goal(k, goal, file_name):
 def main():
     parsed = parse_args(sys.argv)
     if not parsed:
-        print("Invalid Input!")
+        print("An Error Has Occurred")
         return
     k, goal, file_name = parsed
     if not dispatch_goal(k, goal, file_name):
-        print("Invalid Input!")
+        print("An Error Has Occurred")
 
 
 if __name__ == '__main__':
