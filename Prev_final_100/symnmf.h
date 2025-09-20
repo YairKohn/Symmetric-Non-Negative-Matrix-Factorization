@@ -5,7 +5,7 @@ int allocate_2D_array(double ***arr, int rows, int cols);
 
 int free_2D_array(double ***arr, int rows);
 
-int C_sym(double ***A, double ***X, const int rows, const int cols);
+int C_sym(double ***A, double ***X, const int N, const int d);
 
 int C_ddg(double **D, double ***A, const int N);
 
