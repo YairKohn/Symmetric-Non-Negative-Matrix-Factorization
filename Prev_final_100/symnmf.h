@@ -9,11 +9,11 @@ int C_sym(double ***A, double ***X, const int rows, const int cols);
 
 int C_ddg(double **D, double ***A, const int N);
 
-int C_norm(double ***W, double **D, double ***A, const int N);
+int C_norm(double ***W, const double *D, const double * const *A, const int N);
 
 int C_symnmf(double ***H_out, double ***H_in, const int rows_H, const int cols_H,
              double ***W, const int N_W);
 
-int parse_diag_to_matrix_form(double ***M, double **D, const int N);
+int parse_diag_to_matrix_form(double ***M, const double *D, const int N);
 
 #endif
