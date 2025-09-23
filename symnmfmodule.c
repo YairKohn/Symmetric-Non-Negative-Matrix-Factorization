@@ -105,7 +105,7 @@ static PyObject *py_sym(PyObject *self, PyObject *args) {
     if (!W) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
     PyObject *res = cmatrix_to_pylist(W, n, n);
     free_cmatrix(points, n);
-    // REMOVED: free_cmatrix(W, n);
+    free_cmatrix(W, n);
     return res;
 }
 
@@ -123,7 +123,7 @@ static PyObject *py_ddg(PyObject *self, PyObject *args) {
     PyObject *res = cmatrix_to_pylist(D, n, n);
     free_cmatrix(points, n);
     free_cmatrix(W, n);
-    // REMOVED: free_cmatrix(D, n);
+    free_cmatrix(D, n);
     return res;
 }
 
@@ -141,7 +141,7 @@ static PyObject *py_norm(PyObject *self, PyObject *args) {
     PyObject *res = cmatrix_to_pylist(N, n, n);
     free_cmatrix(points, n);
     free_cmatrix(W, n);
-    // REMOVED: free_cmatrix(N, n);
+    free_cmatrix(N, n);
     return res;
 }
 
@@ -163,9 +163,10 @@ static PyObject *py_symnmf(PyObject *self, PyObject *args) {
     double **H_res = symnmf(W, H, n1, k, max_iter, epsilon);
     if (!H_res) { free_cmatrix(W, n1); free_cmatrix(H, n2); PyErr_NoMemory(); return NULL; }
     PyObject *res = cmatrix_to_pylist(H_res, n1, k);
+
     free_cmatrix(W, n1);
     free_cmatrix(H, n2);
-    // REMOVED: free_cmatrix(H_res, n1);
+    free_cmatrix(H_res, n1);
     return res;
 }
 

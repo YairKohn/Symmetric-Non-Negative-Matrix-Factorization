@@ -25,7 +25,7 @@ def print_matrix(mat):
         print(','.join(f"{val:.4f}" for val in row))
 
 
-def init_H_from_W(W, n, k):
+def init_H_from_W(W,n, k):
     m = np.mean(np.array(W))
     H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
     return H
@@ -55,7 +55,7 @@ def dispatch_goal(k, goal, file_name):
         return True
     if goal == 'symnmf':
         W = symnmf.norm(X)
-        H0 = init_H_from_W(W, n, k)
+        H0 = init_H_from_W(W,n, k)
         H_final = symnmf.symnmf(W, H0, MAX_ITER, EPSILON)
         print_matrix(H_final)
         return True

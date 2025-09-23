@@ -340,6 +340,9 @@ static void multiplicative_update_step(double **W, double **H_curr, double **H_n
             double denom = den[i][j];
             if (denom == 0)
             {
+                free_matrix(num, n);
+                free_matrix(HHt, n);
+                free_matrix(den, n);
                 print_error_and_exit();
             }
             ratio =  (num[i][j] / denom) ;
@@ -361,7 +364,10 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
     for (iter = 0; iter < max_iter; iter++) {
         multiplicative_update_step(W, H_curr, H_next, n, k);
         if (frobenius_norm_sq_diff(H_next, H_curr, n, k) < epsilon) {
+            /* copy H_next into H_curr, free original H_curr */
+            free_matrix(H_curr, n);
             H_curr = H_next;
+            H_next = NULL;  /* mark that it's now H_curr */
             break;
         }
         {

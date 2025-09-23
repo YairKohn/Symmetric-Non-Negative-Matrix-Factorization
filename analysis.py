@@ -17,7 +17,7 @@ def read_points(path):
 
 
 
-def init_H_from_W(W, n, k):
+def init_H_from_W(W,n, k):
     m = np.mean(np.array(W))
     H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
     return H
