@@ -2,37 +2,33 @@ import sys
 import numpy as np
 import symnmfmodule as s  # C module
 
-# initializing the random function as required
+# global arguments
+goal_list = ['symnmf', 'sym', 'ddg', 'norm']
+
+# initializing the random function
 np.random.seed(1234)
 
-# function mapping
-goal_funcs = {
-    'symnmf': lambda X, K, N: symnmf(X, K, N),
-    'sym': lambda X, K, N: sym(X),
-    'ddg': lambda X, K, N: ddg(X),
-    'norm': lambda X, K, N: norm(X)
-}
 
 def createDVectors(file):
     """
-    create the N Points from the given file
+    Create the N Points from the given file
     :param file: opened input file
     :type file: TextIOWrapper
     :return: list of lists represents the vector in file
     :rtype: list of lists (size: N*d)
     """
     dVectors = []
-    for line in file: #iterates the vectors
+    for line in file:
         vector = line.splitlines()[0].split(",")
-        numVector = [float(i) for i in vector]  # casting from string to number
+        numVector = [eval(i) for i in vector]  # casting from string to number
         dVectors.append(numVector)
     return dVectors
 
 
+# function to handle errors
 def handleError():
     """
-    handles errors
-    prints error message and quit the program
+    function that prints error message and quit the program
     :return: void
     """
     print("An Error Has Occurred")
@@ -45,7 +41,7 @@ def symnmf(X, k, N):
     :param X: input vectors in a matrix form
     :type X: list of lists
     :param k: number of clusters
-    :type k: int (k<N)
+    :type k: int
     :param N: number of vectors in X
     :type N: int
     :return: symnmf matrix
@@ -104,35 +100,40 @@ def printMat(mat):
 
 if __name__ == "__main__":
     """
-    performs symNMF (symmetric Non-negative Matrix Factorization) and prints the result
+    performs symNMF (symmetric Non-negative Matrix Factorization and prints the result
     """
-    if len(sys.argv) != 4:  # missing argument: script name, k, goal, filename
+    if len(sys.argv) != 4:  # missing argument
         handleError()
 
     # Initializing arguments
     try:
         K = int(sys.argv[1])
-        goal = sys.argv[2]
-        filename = sys.argv[3]
+        goal = str(sys.argv[2])
+        filename = str(sys.argv[3])
     except:
         handleError()
 
-    if goal not in goal_funcs:  # check if goal is in the dictionary of allowed functions
+    if goal not in goal_list:  # check if goal is in the list of allowed values
         handleError()
 
     if not filename.endswith('.txt'):  # check filename extension
         handleError()
 
-    with open(filename, 'r') as file: # open the data file for reading
-        X = createDVectors(file)
-        N = len(X)
+    with open(filename, 'r') as file:
+        N = len(file.readlines())
         if 1 >= K or K >= N:
             handleError()
 
-    resMat = goal_funcs[goal](X, K, N)
+        file.seek(0)  # returning to the beginning of the file
+
+        X = createDVectors(file)
+
+    if goal == goal_list[0]:
+        resMat = eval(goal)(X, K, N)
+    else:
+        resMat = eval(goal)(X)
 
     if resMat is None:
         handleError()
 
     printMat(resMat)
-
