@@ -3,7 +3,16 @@
 #include <stdlib.h>
 #include "symnmf.h"
 
-/* Helpers for converting Python list-of-lists to C double ** */
+/**
+ * @brief Helpers for converting Python list-of-lists to C double **
+ * 
+ * Checks that `list2d` is a list of lists of equal length.
+ * 
+ * @param list2d The Python list-of-lists
+ * @param out_rows Pointer to store the number of rows in the matrix
+ * @param out_cols Pointer to store the number of columns in the matrix
+ * @return 1 if the input is valid and dimensions were retrieved, 0 otherwise
+ */
 static int get_pylist_shape(PyObject *list2d, int *out_rows, int *out_cols) {
     if (!PyList_Check(list2d)) { PyErr_SetString(PyExc_TypeError, "Invalid Input!"); return 0; }
     Py_ssize_t n = PyList_Size(list2d);
@@ -25,6 +34,13 @@ static int get_pylist_shape(PyObject *list2d, int *out_rows, int *out_cols) {
     return 1;
 }
 
+/**
+ * @brief Allocate a C matrix with of doubles with the given dimensions.
+ * 
+ * @param rows The number of rows to allocate in the matrix
+ * @param cols The number of columns to allocate in the matrix
+ * @return A pointer to the allocated matrix, or NULL on error
+ */
 static double **allocate_cmatrix_rows(int rows, int cols) {
     double **mat = (double **)malloc((size_t)rows * sizeof(double *));
     if (!mat) { PyErr_NoMemory(); return NULL; }
@@ -40,6 +56,15 @@ static double **allocate_cmatrix_rows(int rows, int cols) {
     return mat;
 }
 
+/**
+ * @brief Fill a pre-allocated C matrix with values from a Python list of lists
+ * 
+ * @param list2d The Python list-of-lists
+ * @param mat Pre-allocated C matrix of shape (rows x cols) to fill.
+ * @param rows The number of rows in the matrix
+ * @param cols The number of columns in the matrix
+ * @return 1 if successful, 0 if error
+ */
 static int fill_cmatrix_from_pylist(PyObject *list2d, double **mat, int rows, int cols) {
     for (int i = 0; i < rows; i++) {
         PyObject *row = PyList_GetItem(list2d, (Py_ssize_t)i);
@@ -55,7 +80,14 @@ static int fill_cmatrix_from_pylist(PyObject *list2d, double **mat, int rows, in
     return 1;
 }
 
-/* Utility: convert Python list of lists to C matrix (double **). Expects rectangular matrix. */
+/**
+ * @brief Convert a rectangular Python list of lists into a newly allocated C matrix (double **).
+ * 
+ * @param list2d The Python list-of-lists
+ * @param out_rows Pointer to store the number of rows in the matrix
+ * @param out_cols Pointer to store the number of columns in the matrix
+ * @return A pointer to the allocated matrix, or NULL on error
+ */
 static double **pylist_to_cmatrix(PyObject *list2d, int *out_rows, int *out_cols) {
     int rows, cols;
     if (!get_pylist_shape(list2d, &rows, &cols)) return NULL;
@@ -71,13 +103,26 @@ static double **pylist_to_cmatrix(PyObject *list2d, int *out_rows, int *out_cols
     return mat;
 }
 
+/**
+ * @brief Free a C matrix
+ * 
+ * @param m The matrix to free
+ * @param rows The number of rows in the matrix
+ */
 static void free_cmatrix(double **m, int rows) {
     if (!m) return;
     for (int i = 0; i < rows; i++) free(m[i]);
     free(m);
 }
 
-/* Utility: convert C matrix to Python list of lists */
+/**
+ * @brief Convert C matrix to Python list of lists
+ * 
+ * @param m The C matrix
+ * @param rows The number of rows in the matrix
+ * @param cols The number of columns in the matrix
+ * @return A pointer to the Python list of lists, or NULL on error
+ */
 static PyObject *cmatrix_to_pylist(double **m, int rows, int cols) {
     PyObject *outer = PyList_New(rows);
     if (!outer) { PyErr_NoMemory(); return NULL; }
@@ -94,58 +139,115 @@ static PyObject *cmatrix_to_pylist(double **m, int rows, int cols) {
     return outer;
 }
 
-/* Wrapper: sym(points) -> A */
+/**
+ * @brief Python wrapper for sym() function
+ * 
+ * Computes similarity matrix A from data points using Gaussian kernel.
+ * 
+ * Args:
+ *   points: List of lists representing data points (n x d matrix)
+ * 
+ * Returns:
+ *   Python list of lists representing similarity matrix A (n x n)
+ * 
+ * Raises:
+ *   TypeError, ValueError, MemoryError
+ */
 static PyObject *py_sym(PyObject *self, PyObject *args) {
     PyObject *points_obj;
-    if (!PyArg_ParseTuple(args, "O", &points_obj)) return NULL;
     int n, d;
+    if (!PyArg_ParseTuple(args, "O", &points_obj)) return NULL;
     double **points = pylist_to_cmatrix(points_obj, &n, &d);
     if (!points) return NULL;
-    double **W = sym(points, n, d);
-    if (!W) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
-    PyObject *res = cmatrix_to_pylist(W, n, n);
+    double **A = sym(points, n, d);
+    if (!A) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
+    PyObject *res = cmatrix_to_pylist(A, n, n);
     free_cmatrix(points, n);
-    free_cmatrix(W, n);
+    free_cmatrix(A, n);
     return res;
 }
 
-/* Wrapper: ddg(points) -> D; build A inside */
+/**
+ * @brief Python wrapper for ddg() function
+ * 
+ * Computes diagonal degree matrix D from data points by first computing
+ * the similarity matrix A, then extracting diagonal degrees.
+ * 
+ * Args:
+ *   points: List of lists representing data points (n x d matrix)
+ * 
+ * Returns:
+ *   Python list of lists representing diagonal degree matrix D (n x n)
+ * 
+ * Raises:
+ *   TypeError, ValueError, MemoryError
+ */
 static PyObject *py_ddg(PyObject *self, PyObject *args) {
     PyObject *points_obj;
-    if (!PyArg_ParseTuple(args, "O", &points_obj)) return NULL;
     int n, d;
+    if (!PyArg_ParseTuple(args, "O", &points_obj)) return NULL;
     double **points = pylist_to_cmatrix(points_obj, &n, &d);
     if (!points) return NULL;
-    double **W = sym(points, n, d);
-    if (!W) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
-    double **D = ddg(W, n);
-    if (!D) { free_cmatrix(points, n); free_cmatrix(W, n); PyErr_NoMemory(); return NULL; }
+    double **A = sym(points, n, d);
+    if (!A) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
+    double **D = ddg(A, n);
+    if (!D) { free_cmatrix(points, n); free_cmatrix(A, n); PyErr_NoMemory(); return NULL; }
     PyObject *res = cmatrix_to_pylist(D, n, n);
     free_cmatrix(points, n);
-    free_cmatrix(W, n);
+    free_cmatrix(A, n);
     free_cmatrix(D, n);
     return res;
 }
 
-/* Wrapper: norm(points) -> N; build A inside */
+/**
+ * @brief Python wrapper for norm() function
+ * 
+ * Computes normalized similarity matrix D^(-1/2) A D^(-1/2) from data points
+ * by first computing the similarity matrix A, then applying symmetric normalization.
+ * 
+ * Args:
+ *   points: List of lists representing data points (n x d matrix)
+ * 
+ * Returns:
+ *   List of lists representing normalized similarity matrix (n x n)
+ * 
+ * Raises:
+ *   TypeError, ValueError, MemoryError
+ */
 static PyObject *py_norm(PyObject *self, PyObject *args) {
     PyObject *points_obj;
     if (!PyArg_ParseTuple(args, "O", &points_obj)) return NULL;
     int n, d;
     double **points = pylist_to_cmatrix(points_obj, &n, &d);
     if (!points) return NULL;
-    double **W = sym(points, n, d);
-    if (!W) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
-    double **N = norm(W, n);
-    if (!N) { free_cmatrix(points, n); free_cmatrix(W, n); PyErr_NoMemory(); return NULL; }
-    PyObject *res = cmatrix_to_pylist(N, n, n);
+    double **A = sym(points, n, d);
+    if (!A) { free_cmatrix(points, n); PyErr_NoMemory(); return NULL; }
+    double **W = norm(A, n);
+    if (!W) { free_cmatrix(points, n); free_cmatrix(A, n); PyErr_NoMemory(); return NULL; }
+    PyObject *res = cmatrix_to_pylist(W, n, n);
     free_cmatrix(points, n);
+    free_cmatrix(A, n);
     free_cmatrix(W, n);
-    free_cmatrix(N, n);
     return res;
 }
 
-/* Wrapper: symnmf(W, H_init, max_iter, epsilon) -> H */
+/**
+ * @brief Python wrapper for symnmf(W, H_init, max_iter, epsilon) function
+ * 
+ * Performs SymNMF factorization W ≈ HH^T using multiplicative updates.
+ * 
+ * Args:
+ *   W: List of lists representing similarity matrix (n x n)
+ *   H_init: List of lists representing initial factor matrix (n x k)
+ *   max_iter: Maximum number of iterations (int)
+ *   epsilon: Convergence threshold (float)
+ * 
+ * Returns:
+ *   List of lists representing optimized factor matrix H (n x k)
+ * 
+ * Raises:
+ *   TypeError, ValueError, MemoryError
+ */
 static PyObject *py_symnmf(PyObject *self, PyObject *args) {
     PyObject *W_obj, *H_obj;
     int n1, n2, k;
@@ -170,6 +272,9 @@ static PyObject *py_symnmf(PyObject *self, PyObject *args) {
     return res;
 }
 
+/**
+ * Method table for the SymNMF Python module
+*/
 static PyMethodDef SymnmfMethods[] = {
     {"sym", (PyCFunction)py_sym, METH_VARARGS, "Compute similarity matrix A from points"},
     {"ddg", (PyCFunction)py_ddg, METH_VARARGS, "Compute diagonal degree matrix from points"},
@@ -178,6 +283,9 @@ static PyMethodDef SymnmfMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+/**
+ * Python module definition
+*/
 static struct PyModuleDef symnmfmodule = {
     PyModuleDef_HEAD_INIT,
     "symnmf",
@@ -186,6 +294,9 @@ static struct PyModuleDef symnmfmodule = {
     SymnmfMethods
 };
 
+/**
+ * Python module initialization
+*/
 PyMODINIT_FUNC PyInit_symnmf(void) {
     return PyModule_Create(&symnmfmodule);
 }

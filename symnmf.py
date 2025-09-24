@@ -1,15 +1,20 @@
 import sys
 from math import sqrt
 import numpy as np
-
-# Import compiled C extension as symnmf (no alias)
 import symnmf
 
+np.random.seed(1234)
 EPSILON = 1e-4
 MAX_ITER = 300
-np.random.seed(1234)
 
 def read_points(path):
+    """
+    Reads points from a file and returns them as a list of lists.
+    :param path: The path to the file containing the points.
+    :type path: str
+    :return: A list of lists representing the points.
+    :rtype: list of lists
+    """
     try:
         arr = np.loadtxt(path, delimiter=',')
         if arr.ndim == 1:
@@ -21,17 +26,41 @@ def read_points(path):
 
 
 def print_matrix(mat):
+    """
+    Prints a matrix in the specified format.
+    :param mat: The matrix to print.
+    :type mat: list of lists
+    :return: void
+    """
     for row in mat:
         print(','.join(f"{val:.4f}" for val in row))
 
 
 def init_H_from_W(W,n, k):
+    """
+    Initializes an H matrix from a W matrix.
+    :param W: The W matrix.
+    :type W: list of lists
+    :param n: The number of points.
+    :type n: int
+    :param k: The number of clusters.
+    :type k: int
+    :return: The initialized H matrix.
+    :rtype: list of lists
+    """    
     m = np.mean(np.array(W))
     H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
     return H
 
 
 def parse_args(argv):
+    """
+    Parses the arguments and returns the number of clusters, the goal, and the file name.
+    :param argv: The arguments.
+    :type argv: list of strings
+    :return: The number of clusters, the goal, and the file name.
+    :rtype: tuple of int, str, str
+    """
     if len(argv) != 4:
         return None
     try:
@@ -42,6 +71,17 @@ def parse_args(argv):
 
 
 def dispatch_goal(k, goal, file_name):
+    """
+    Dispatches the goal and prints the result.
+    :param k: The number of clusters.
+    :type k: int
+    :param goal: The goal.
+    :type goal: str
+    :param file_name: The name of the file containing the points.
+    :type file_name: str
+    :return: True if the goal was dispatched successfully, False otherwise.
+    :rtype: bool
+    """
     X = read_points(file_name)
     n = len(X)
     if goal == 'sym':
@@ -63,6 +103,9 @@ def dispatch_goal(k, goal, file_name):
 
 
 def main():
+    """
+    performs symNMF (symmetric Non-negative Matrix Factorization) and prints the result
+    """
     parsed = parse_args(sys.argv)
     if not parsed:
         print("An Error Has Occurred")
