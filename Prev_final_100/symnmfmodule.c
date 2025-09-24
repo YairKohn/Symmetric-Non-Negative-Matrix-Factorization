@@ -159,7 +159,7 @@ static PyObject *ddg(PyObject *self, PyObject *args) {
     if (C_ddg(&CD, &CA, N) != 0)
         return NULL;
 
-    if (parse_diag_to_matrix_form(&D_out, CD, N) != 0)
+    if (parse_diag_to_matrix_form(&D_out, &CD, N) != 0)
         return NULL;
 
     parse_2D_array_to_PyObject(&PyD, &D_out, N, N);
@@ -193,7 +193,7 @@ static PyObject *norm(PyObject *self, PyObject *args) {
     if (C_ddg(&CD, &CA, N) != 0)
         return NULL;
 
-    if (C_norm(&CW, CD, CA, N) != 0)
+    if (C_norm(&CW, &CD, &CA, N) != 0)
         return NULL;
 
     parse_2D_array_to_PyObject(&PyW, &CW, N, N);
@@ -239,4 +239,3 @@ static struct PyModuleDef symnmfmodule = {
 PyMODINIT_FUNC PyInit_symnmfmodule(void) {
     return PyModule_Create(&symnmfmodule);
 }
-
