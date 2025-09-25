@@ -398,7 +398,7 @@ double **norm(double **A, int n) {
     }
 
     for (i = 0; i < n; i++) {
-        if (degrees[i] <= 0.0)
+        if (degrees[i] <= 0.0) /* avoid division by zero */
             inv_sqrt_d[i] = 0.0; /* isolated node */
         else
             inv_sqrt_d[i] = 1.0 / sqrt(degrees[i]);
@@ -453,7 +453,7 @@ static void multiplicative_update_step(double **W, double **H_curr, double **H_n
             double ratio;
             double val;
             double denom = den[i][j];
-            if (denom == 0)
+            if (denom == 0) /* avoid division by zero */
             {
                 free_matrix(num, n);
                 free_matrix(HHt, n);

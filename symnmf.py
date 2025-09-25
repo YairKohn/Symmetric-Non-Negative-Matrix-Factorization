@@ -38,7 +38,8 @@ def print_matrix(mat):
 
 def init_H_from_W(W,n, k):
     """
-    Initializes an H matrix from a W matrix.
+    Initialize H from W using random values in the required interval.
+    H ~ U(0, 2*sqrt(mean(W)/k)).
     :param W: The W matrix.
     :type W: list of lists
     :param n: The number of points.
