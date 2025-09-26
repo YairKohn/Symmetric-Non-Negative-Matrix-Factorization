@@ -3,9 +3,10 @@ from math import sqrt
 import numpy as np
 import symnmf
 
-np.random.seed(1234)
-EPSILON = 1e-4
-MAX_ITER = 300
+# Algorithm parameters
+np.random.seed(1234)  # Fixed seed for reproducible results
+EPSILON = 1e-4        # Convergence threshold for SymNMF iterations
+MAX_ITER = 300        # Maximum number of iterations for SymNMF
 
 def read_points(path):
     """
@@ -27,7 +28,7 @@ def read_points(path):
 
 def print_matrix(mat):
     """
-    Prints a matrix in the specified format.
+    Prints a matrix in the specified format with 4 decimal places..
     :param mat: The matrix to print.
     :type mat: list of lists
     :return: void
@@ -68,8 +69,12 @@ def parse_args(argv):
         k = int(argv[1])
     except Exception:
         return None
-    return k, argv[2], argv[3]
-
+    goal = argv[2]
+    filename = argv[3]
+    if not filename.endswith('.txt'):  # check filename extension
+        return None
+    
+    return k, goal, filename
 
 def dispatch_goal(k, goal, file_name):
     """

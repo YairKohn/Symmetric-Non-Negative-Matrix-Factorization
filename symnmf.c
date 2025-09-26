@@ -28,7 +28,8 @@
  * Prints "An Error Has Occurred" to stdout and exits with code 1.
  */
 static void print_error_and_exit(void) {
-    const char *msg = "An Error Has Occurred";
+    const char *msg;
+    msg = "An Error Has Occurred";
     fprintf(stdout, "%s\n", msg);
     exit(1);
 }
@@ -163,8 +164,7 @@ static void count_rows_cols(FILE *fp, int *out_rows, int *out_cols) {
  */
 static double **read_points_from_file(const char *file_path, int *out_n, int *out_d) {
     FILE *fp;
-    int n;
-    int d;
+    int n, d;
     double **points;
 
     fp = fopen(file_path, "r");
@@ -212,8 +212,7 @@ static void print_matrix(double **matrix, int n, int m) {
  */
 static double squared_euclidean(const double *a, const double *b, int d) {
     int t;
-    double sum;
-    double diff;
+    double sum, diff;
     sum = 0.0;
     for (t = 0; t < d; t++) {
         diff = a[t] - b[t];
@@ -234,10 +233,12 @@ static double squared_euclidean(const double *a, const double *b, int d) {
  */
 static double **matrix_multiply(double **A, int n, int m, double **B, int p) {
     int i, j, t;
-    double **C = allocate_matrix(n, p);
+    double sum;
+    double **C;
+    C = allocate_matrix(n, p);
     for (i = 0; i < n; i++) {
         for (j = 0; j < p; j++) {
-            double sum = 0.0;
+            sum = 0.0;
             for (t = 0; t < m; t++)
                 sum += A[i][t] * B[t][j];
             C[i][j] = sum;
@@ -256,10 +257,12 @@ static double **matrix_multiply(double **A, int n, int m, double **B, int p) {
  */
 static double **matrix_transpose_multiply(double **A, int n, int k) {
     int i, j, t;
-    double **S = allocate_matrix(n, n);  /* n x n */
+    double sum;
+    double **S;
+    S = allocate_matrix(n, n);  /* n x n */
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
-            double sum = 0.0;
+            sum = 0.0;
             for (t = 0; t < k; t++) {
                 sum += A[i][t] * A[j][t];
             }
@@ -281,10 +284,11 @@ static double **matrix_transpose_multiply(double **A, int n, int k) {
  */
 static double frobenius_norm_sq_diff(double **A, double **B, int n, int k) {
     int i, j;
-    double sum = 0.0;
+    double sum, d;
+    sum = 0.0;
     for (i = 0; i < n; i++) {
         for (j = 0; j < k; j++) {
-            double d = A[i][j] - B[i][j];
+            d = A[i][j] - B[i][j];
             sum += d * d;
         }
     }
@@ -300,8 +304,9 @@ static double frobenius_norm_sq_diff(double **A, double **B, int n, int k) {
  */
 static void compute_degrees(double **A, int n, double *degrees) {
     int i, j;
+    double sum;
     for (i = 0; i < n; i++) {
-        double sum = 0.0;
+        sum = 0.0;
         for (j = 0; j < n; j++) {
             sum += A[i][j];
         }
@@ -325,8 +330,8 @@ static void compute_degrees(double **A, int n, double *degrees) {
  */
 double **sym(double **points, int n, int d) {
     double **A;
-    int i, j;
     double dist2;
+    int i, j;
 
     A = allocate_matrix(n, n);
 
@@ -382,8 +387,7 @@ double **ddg(double **A, int n) {
  */
 double **norm(double **A, int n) {
     double **W;
-    double *degrees;
-    double *inv_sqrt_d;
+    double *degrees, *inv_sqrt_d;
     int i, j;
 
     degrees = (double *)malloc((size_t)n * sizeof(double));
@@ -443,16 +447,17 @@ static void copy_matrix_rect(double **src, double **dst, int rows, int cols) {
  * @param k The number of clusters
  */
 static void multiplicative_update_step(double **W, double **H_curr, double **H_next, int n, int k) {
-    double **num = matrix_multiply(W, n, n, H_curr, k);      
-    double **HHt = matrix_transpose_multiply(H_curr, n, k);  
-    double **den = matrix_multiply(HHt, n, n, H_curr, k);     
-
     int i, j;
+    double **num, **HHt, **den;
+    double ratio, val, denom;
+
+    num = matrix_multiply(W, n, n, H_curr, k);      
+    HHt = matrix_transpose_multiply(H_curr, n, k);  
+    den = matrix_multiply(HHt, n, n, H_curr, k);     
+
     for (i = 0; i < n; i++) {
         for (j = 0; j < k; j++) {
-            double ratio;
-            double val;
-            double denom = den[i][j];
+            denom = den[i][j];
             if (denom == 0) /* avoid division by zero */
             {
                 free_matrix(num, n);
@@ -483,8 +488,12 @@ static void multiplicative_update_step(double **W, double **H_curr, double **H_n
  */
 double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double epsilon) {
     int iter;
-    double **H_curr = allocate_matrix(n, k);
-    double **H_next = allocate_matrix(n, k);
+    double **H_curr, **H_next;
+
+    if ( 1>= k || k >= n) print_error_and_exit();
+
+    H_curr = allocate_matrix(n, k);
+    H_next = allocate_matrix(n, k);
     copy_matrix_rect(H_init, H_curr, n, k);
 
     for (iter = 0; iter < max_iter; iter++) {
@@ -519,7 +528,8 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
  * @param d The dimension of the points
  */
 static void run_goal_sym(double **points, int n, int d) {
-    double **M = sym(points, n, d);
+    double **M;
+    M = sym(points, n, d);
     print_matrix(M, n, n);
     free_matrix(M, n);
 }
@@ -532,8 +542,9 @@ static void run_goal_sym(double **points, int n, int d) {
  * @param d The dimension of the points
  */
 static void run_goal_ddg(double **points, int n, int d) {
-    double **W = sym(points, n, d);
-    double **M = ddg(W, n);
+    double **W, **M;
+    W = sym(points, n, d);
+    M = ddg(W, n);
     print_matrix(M, n, n);
     free_matrix(M, n);
     free_matrix(W, n);
@@ -547,8 +558,10 @@ static void run_goal_ddg(double **points, int n, int d) {
  * @param d The dimension of the points
  */
 static void run_goal_norm(double **points, int n, int d) {
-    double **W = sym(points, n, d);
-    double **M = norm(W, n);
+    double **W, **M;
+
+    W = sym(points, n, d);
+    M = norm(W, n);
     print_matrix(M, n, n);
     free_matrix(M, n);
     free_matrix(W, n);
@@ -562,8 +575,7 @@ static void run_goal_norm(double **points, int n, int d) {
  * @return The exit code
  */
 int main(int argc, char **argv) {
-    const char *goal;
-    const char *file_path;
+    const char *goal, *file_path;
     int n, d;
     double **points;
 
