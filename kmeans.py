@@ -1,4 +1,3 @@
-import sys
 import math
 
 def euclidean_distance(p1, p2):
