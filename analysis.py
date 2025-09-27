@@ -1,5 +1,4 @@
 import sys
-from math import sqrt
 import numpy as np
 from sklearn.metrics import silhouette_score
 import symnmf
@@ -8,15 +7,32 @@ import symnmf_utils
 
 
 def labels_from_centroids(points, centroids):
+    """
+    Assigns cluster labels to data points based on their distance to centroids.
+    :param points: list of points
+    :type points: list
+    :param centroids: list of centroids
+    :type centroids: list
+    :return: labels of the clusters
+    :rtype: list
+    """
     points_arr = np.array(points, dtype=float)
     centroids_arr = np.array(centroids, dtype=float)
-    # distances shape: (n_points, n_centroids)
     dists = np.linalg.norm(points_arr[:, np.newaxis, :] - centroids_arr[np.newaxis, :, :], axis=2)
     labels = np.argmin(dists, axis=1)
     return labels
 
 
 def run_symnmf(points_np, k):
+    """
+    Run symnmf clustering algorithm.
+    :param points_np: numpy array of points
+    :type points_np: numpy array
+    :param k: number of clusters
+    :type k: int
+    :return: labels of the clusters
+    :rtype: list
+    """
     X_list = points_np.tolist()
     W = symnmf.norm(X_list)
     n = len(X_list)
@@ -28,12 +44,25 @@ def run_symnmf(points_np, k):
 
 
 def run_kmeans(points_np, k):
+    """
+    Run kmeans clustering algorithm.
+    :param points_np: numpy array of points
+    :type points_np: numpy array
+    :param k: number of clusters
+    :type k: int
+    :return: labels of the clusters
+    :rtype: list
+    """
     centroids = kmeans(points_np.tolist(), k, symnmf_utils.MAX_ITER)
     labels = labels_from_centroids(points_np, centroids)
     return labels
 
 
 def main():
+    """
+    Main function to run the analysis. 
+    Compare between kmeans and symnmf clustering algorithms.
+    """
     if len(sys.argv) != 3:
         print("Invalid Input!")
         return
