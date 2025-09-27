@@ -1,10 +1,10 @@
+import numpy as np
+from math import sqrt
+
 """
 Contains utility functions and constants
 for Symmetric Non-Negative Matrix Factorization (SymNMF) python files: symnmf.py, analysis.py.
 """
-
-import numpy as np
-from math import sqrt
 
 EPSILON = 1e-4
 MAX_ITER = 300
@@ -26,7 +26,6 @@ def read_points(path):
     except Exception:
         print("An Error Has Occurred")
         return []
-    
 
 def init_H_from_W(W,n, k):
     """
