@@ -70,6 +70,7 @@ static double **allocate_matrix(int num_rows, int num_cols) {
  */
 static void free_matrix(double **matrix, int num_rows) {
     int i;
+    
     if (matrix == NULL) return;
     for (i = 0; i < num_rows; i++)
         free(matrix[i]);

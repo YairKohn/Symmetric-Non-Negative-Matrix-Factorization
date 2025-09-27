@@ -4,23 +4,7 @@ import numpy as np
 from sklearn.metrics import silhouette_score
 import symnmf
 from kmeans import kmeans
-
-EPSILON = 1e-4
-MAX_ITER = 300
-np.random.seed(1234)
-
-def read_points(path):
-    arr = np.loadtxt(path, delimiter=',')
-    if arr.ndim == 1:
-        arr = arr.reshape(-1, 1)
-    return arr
-
-
-
-def init_H_from_W(W,n, k):
-    m = np.mean(np.array(W))
-    H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
-    return H
+import symnmf_utils
 
 
 def labels_from_centroids(points, centroids):
@@ -36,15 +20,15 @@ def run_symnmf(points_np, k):
     X_list = points_np.tolist()
     W = symnmf.norm(X_list)
     n = len(X_list)
-    H0 = init_H_from_W(W, n, k)
-    H_final = symnmf.symnmf(W, H0, MAX_ITER, EPSILON)
+    H0 = symnmf_utils.init_H_from_W(W, n, k)
+    H_final = symnmf.symnmf(W, H0, symnmf_utils.MAX_ITER, symnmf_utils.EPSILON)
     H_np = np.array(H_final)
     labels = np.argmax(H_np, axis=1)
     return labels
 
 
 def run_kmeans(points_np, k):
-    centroids = kmeans(points_np.tolist(), k, MAX_ITER)
+    centroids = kmeans(points_np.tolist(), k, symnmf_utils.MAX_ITER)
     labels = labels_from_centroids(points_np, centroids)
     return labels
 
@@ -60,12 +44,10 @@ def main():
         return
     file_name = sys.argv[2]
 
-    points = read_points(file_name)
+    points = np.array(symnmf_utils.read_points(file_name), dtype=float)
 
     nmf_labels = run_symnmf(points, k)
     kmeans_labels = run_kmeans(points, k)
-
-
 
     nmf_score = silhouette_score(points, nmf_labels)
     kmeans_score = silhouette_score(points, kmeans_labels)

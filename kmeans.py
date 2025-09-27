@@ -1,16 +1,6 @@
 import sys
 import math
 
-# def read_input():
-#     points = []
-#     for line in sys.stdin:
-#         line = line.strip() #delete leading and trailing whitespace
-#         if not line:
-#             continue
-#         vector = list(map(float, line.split(',')))
-#         points.append(vector)
-#     return points
-
 def euclidean_distance(p1, p2):
     """
     Calculates the Euclidean distance between two points.

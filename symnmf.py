@@ -2,28 +2,29 @@ import sys
 from math import sqrt
 import numpy as np
 import symnmf
+import symnmf_utils
 
 # Algorithm parameters
-np.random.seed(1234)  # Fixed seed for reproducible results
-EPSILON = 1e-4        # Convergence threshold for SymNMF iterations
-MAX_ITER = 300        # Maximum number of iterations for SymNMF
+# np.random.seed(1234)  # Fixed seed for reproducible results
+# EPSILON = 1e-4        # Convergence threshold for SymNMF iterations
+# MAX_ITER = 300        # Maximum number of iterations for SymNMF
 
-def read_points(path):
-    """
-    Reads points from a file and returns them as a list of lists.
-    :param path: The path to the file containing the points.
-    :type path: str
-    :return: A list of lists representing the points.
-    :rtype: list of lists
-    """
-    try:
-        arr = np.loadtxt(path, delimiter=',')
-        if arr.ndim == 1:
-            arr = arr.reshape(-1, 1)
-        return arr.tolist()
-    except Exception:
-        print("An Error Has Occurred")
-        return []
+# def read_points(path):
+#     """
+#     Reads points from a file and returns them as a list of lists.
+#     :param path: The path to the file containing the points.
+#     :type path: str
+#     :return: A list of lists representing the points.
+#     :rtype: list of lists
+#     """
+#     try:
+#         arr = np.loadtxt(path, delimiter=',')
+#         if arr.ndim == 1:
+#             arr = arr.reshape(-1, 1)
+#         return arr.tolist()
+#     except Exception:
+#         print("An Error Has Occurred")
+#         return []
 
 
 def print_matrix(mat):
@@ -37,22 +38,22 @@ def print_matrix(mat):
         print(','.join(f"{val:.4f}" for val in row))
 
 
-def init_H_from_W(W,n, k):
-    """
-    Initialize H from W using random values in the required interval.
-    H ~ U(0, 2*sqrt(mean(W)/k)).
-    :param W: The W matrix.
-    :type W: list of lists
-    :param n: The number of points.
-    :type n: int
-    :param k: The number of clusters.
-    :type k: int
-    :return: The initialized H matrix.
-    :rtype: list of lists
-    """    
-    m = np.mean(np.array(W))
-    H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
-    return H
+# def init_H_from_W(W,n, k):
+#     """
+#     Initialize H from W using random values in the required interval.
+#     H ~ U(0, 2*sqrt(mean(W)/k)).
+#     :param W: The W matrix.
+#     :type W: list of lists
+#     :param n: The number of points.
+#     :type n: int
+#     :param k: The number of clusters.
+#     :type k: int
+#     :return: The initialized H matrix.
+#     :rtype: list of lists
+#     """    
+#     m = np.mean(np.array(W))
+#     H = np.random.uniform(0, 2*np.sqrt(m/k), (n, k)).tolist()
+#     return H
 
 
 def parse_args(argv):
@@ -88,7 +89,7 @@ def dispatch_goal(k, goal, file_name):
     :return: True if the goal was dispatched successfully, False otherwise.
     :rtype: bool
     """
-    X = read_points(file_name)
+    X = symnmf_utils.read_points(file_name)
     n = len(X)
     if goal == 'sym':
         print_matrix(symnmf.sym(X))
@@ -101,8 +102,8 @@ def dispatch_goal(k, goal, file_name):
         return True
     if goal == 'symnmf':
         W = symnmf.norm(X)
-        H0 = init_H_from_W(W,n, k)
-        H_final = symnmf.symnmf(W, H0, MAX_ITER, EPSILON)
+        H0 = symnmf_utils.init_H_from_W(W,n, k)
+        H_final = symnmf.symnmf(W, H0, symnmf_utils.MAX_ITER, symnmf_utils.EPSILON)
         print_matrix(H_final)
         return True
     return False
