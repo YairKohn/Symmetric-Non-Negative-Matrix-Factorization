@@ -25,8 +25,8 @@ def labels_from_centroids(points, centroids):
 
 def run_symnmf(points_np, k):
     """
-    Run symnmf clustering algorithm.
-    :param points_np: numpy array of points
+    Run symnmf clustering algorithm and return labels based on the final H matrix.
+    Each point is assigned to the cluster corresponding to the index of the maximum value in its row in H.    :param points_np: numpy array of points
     :type points_np: numpy array
     :param k: number of clusters
     :type k: int
@@ -45,7 +45,7 @@ def run_symnmf(points_np, k):
 
 def run_kmeans(points_np, k):
     """
-    Run kmeans clustering algorithm.
+    Run kmeans clustering algorithm and return labels based on the final centroids.
     :param points_np: numpy array of points
     :type points_np: numpy array
     :param k: number of clusters
