@@ -20,6 +20,7 @@
 */
 
 #define BETA 0.5
+#define EPSILON_DIV 1e-10
 
 /**
  * @brief Prints error message and exits the program
@@ -403,9 +404,9 @@ double **norm(double **A, int n) {
 
     for (i = 0; i < n; i++) {
         if (degrees[i] <= 0.0) /* avoid division by zero */
-            inv_sqrt_d[i] = 0.0; /* isolated node */
-        else
-            inv_sqrt_d[i] = 1.0 / sqrt(degrees[i]);
+            degrees[i] = EPSILON_DIV;
+        
+        inv_sqrt_d[i] = 1.0 / sqrt(degrees[i]);
     }
 
     W = allocate_matrix(n, n);
@@ -459,12 +460,7 @@ static void multiplicative_update_step(double **W, double **H_curr, double **H_n
         for (j = 0; j < k; j++) {
             denom = den[i][j];
             if (denom == 0) /* avoid division by zero */
-            {
-                free_matrix(num, n);
-                free_matrix(HHt, n);
-                free_matrix(den, n);
-                print_error_and_exit();
-            }
+                denom = EPSILON_DIV;
             ratio =  (num[i][j] / denom) ;
             val = H_curr[i][j] * (1.0 - BETA + BETA * ratio);
             H_next[i][j] = (val > 0.0) ? val : 0.0;
@@ -499,8 +495,7 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
     for (iter = 0; iter < max_iter; iter++) {
         multiplicative_update_step(W, H_curr, H_next, n, k);
         if (frobenius_norm_sq_diff(H_next, H_curr, n, k) < epsilon) {
-            /* copy H_next into H_curr, free original H_curr */
-            free_matrix(H_curr, n);
+            free_matrix(H_curr, n); /* free original H_curr, copy H_next into H_curr */
             H_curr = H_next;
             H_next = NULL;  /* mark that it's now H_curr */
             break;
@@ -511,7 +506,6 @@ double **symnmf(double **W, double **H_init, int n, int k, int max_iter, double 
             H_next = tmp;
         }
     }
-
     if (H_next != H_curr) {
         free_matrix(H_next, n);
     }
